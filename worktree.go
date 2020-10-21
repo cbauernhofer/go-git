@@ -735,14 +735,30 @@ func (w *Worktree) resolveRelativeSubmodulePaths(m *config.Modules) {
 		return
 	}
 
-	parentURL := filepath.Dir(origin[0].c.URLs[0])
-
 	for i := range m.Submodules {
 		if strings.HasPrefix(m.Submodules[i].URL, "../") {
-			child := strings.Replace(m.Submodules[i].URL, "../", "", 1)
-			m.Submodules[i].URL = fmt.Sprintf("%s/%s", parentURL, child)
+			m.Submodules[i].URL = w.resolveRelativeSubmodulePath(origin[0].c.URLs[0], m.Submodules[i].URL)
 		}
 	}
+}
+
+func (w *Worktree) resolveRelativeSubmodulePath(parentURL string, relativeURL string) string {
+	parentJunks := strings.Split(parentURL, "/")
+	relativeJunks := strings.Split(relativeURL, "/")
+	relativeStartIdx := 0
+
+	for i := range relativeJunks {
+		if relativeJunks[i] == ".." {
+			parentJunks = parentJunks[:len(parentJunks)-1]
+			relativeStartIdx = i + 1
+		}
+	}
+
+	urlBasePath := strings.Join(parentJunks[:], "/")
+	urlRelativePath := strings.Join(relativeJunks[relativeStartIdx:], "/")
+	url := fmt.Sprintf("%s/%s", urlBasePath, urlRelativePath)
+
+	return url
 }
 
 // Clean the worktree by removing untracked files.
